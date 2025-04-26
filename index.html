@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Чат</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="chat">
+        <div id="messages"></div>
+        <form id="form">
+            <input type="text" id="username" placeholder="Ваше имя" required>
+            <input type="text" id="text" placeholder="Сообщение" required>
+            <button type="submit">Отправить</button>
+        </form>
+    </div>
+
+    <script>
+    let lastMessageCount = 0; // сколько сообщений уже было
+
+    async function loadMessages() {
+        const response = await fetch('/messages');
+        const messages = await response.json();
+        const messagesDiv = document.getElementById('messages');
+
+        if (messages.length > lastMessageCount) {
+            // добавляем только новые сообщения
+            for (let i = lastMessageCount; i < messages.length; i++) {
+                const p = document.createElement('p');
+                p.innerHTML = `<strong>${messages[i].username}:</strong> ${messages[i].text}`;
+                messagesDiv.appendChild(p);
+            }
+            messagesDiv.scrollTop = messagesDiv.scrollHeight; // автоскролл вниз
+            lastMessageCount = messages.length; // обновляем количество сообщений
+        }
+    }
+
+    document.getElementById('form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('username').value;
+        const text = document.getElementById('text').value;
+
+        await fetch('/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `username=${encodeURIComponent(username)}&text=${encodeURIComponent(text)}`
+        });
+
+        document.getElementById('text').value = '';
+        await loadMessages();
+    });
+
+    setInterval(loadMessages, 1000);
+    loadMessages();
+</script>
+
+</body>
+</html>
