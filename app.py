@@ -1,41 +1,51 @@
-from flask import Flask, render_template, request, jsonify
-import json
+from flask import Flask, request, jsonify, render_template
 import os
+import json
 
 app = Flask(__name__)
 
-# Путь к файлу с сообщениями
-MESSAGES_FILE = 'messages.json'
+# Файл для хранения сообщений
+MESSAGES_FILE = "messages.json"
 
-# Если файл не существует — создаём пустой
-if not os.path.exists(MESSAGES_FILE):
-    with open(MESSAGES_FILE, 'w') as f:
-        json.dump([], f)
-
+# Функция для загрузки сообщений из файла
 def load_messages():
-    with open(MESSAGES_FILE, 'r') as f:
+    if not os.path.exists(MESSAGES_FILE):
+        return []
+    with open(MESSAGES_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
-def save_message(username, text):
-    messages = load_messages()
-    messages.append({'username': username, 'text': text})
-    with open(MESSAGES_FILE, 'w') as f:
-        json.dump(messages, f)
+# Функция для сохранения сообщений в файл
+def save_messages(messages):
+    with open(MESSAGES_FILE, "w", encoding="utf-8") as f:
+        json.dump(messages, f, ensure_ascii=False, indent=2)
 
-@app.route('/')
+# Главная страница (чат)
+@app.route("/")
 def index():
-    return render_template('index.html')
+    return render_template("index.html")
 
-@app.route('/send', methods=['POST'])
-def send_message():
-    username = request.form['username']
-    text = request.form['text']
-    save_message(username, text)
-    return '', 204
-
-@app.route('/messages')
+# Получить все сообщения (для скрипта)
+@app.route("/messages")
 def get_messages():
-    return jsonify(load_messages())
+    messages = load_messages()
+    return jsonify(messages)
 
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+# Отправить сообщение
+@app.route("/send", methods=["POST"])
+def send_message():
+    username = request.form.get("username")
+    text = request.form.get("text")
+    
+    if not username or not text:
+        return "Ошибка: пустое сообщение!", 400
+    
+    messages = load_messages()
+    messages.append({"username": username, "text": text})
+    save_messages(messages)
+    
+    return "Сообщение отправлено!", 200
+
+# Чтобы приложение знало порт на хостинге
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
